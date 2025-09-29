@@ -12,16 +12,18 @@ else:
 
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler(sys.stdout)])
+logging.basicConfig(level=logging.WARNING, format='%(levelname)s: %(message)s')
 LOG = logging.getLogger("draft_monitor")
 
-INTERVAL = int(os.getenv("DRAFT_MONITOR_INTERVAL", "10") or 10)
+INTERVAL = 10  # Check for new picks every 10 seconds
 
 filename = os.getenv('EXCEL_FILENAME', 'fantasy_draft_data.xlsx')
 if filename.lower().endswith('.numbers'):
     base = filename[:-8] or 'fantasy_draft_data'
     filename = base + '.xlsx'
     LOG.warning("EXCEL_FILENAME was a .numbers package; using canonical '%s'", filename)
+elif not filename.lower().endswith('.xlsx'):
+    filename += '.xlsx'
 
 exporter = DraftExporter(filename)
 api = YahooFantasyAPI()
@@ -61,22 +63,51 @@ def collect_new(draft_results):
     return rows
 
 def main():
-    LOG.info("Starting draft monitor (interval=%ss, file=%s)" % (INTERVAL, exporter.filename))
+    print(f"🏒 Yahoo Fantasy Draft Monitor")
+    print(f"📊 Monitoring file: {exporter.filename}")
+    print(f"⏱️  Checking every {INTERVAL} seconds")
+
+    # Test API connection
+    try:
+        print("🔗 Testing Yahoo API connection...")
+        api.ensure_authenticated()
+        print("✅ Connected to Yahoo API")
+    except Exception as e:
+        print(f"❌ Failed to connect to Yahoo API: {e}")
+        print("Please run 'python setup.py' first to authenticate")
+        return
+
+    print("🔄 Monitoring... (Press Ctrl+C to stop)")
+    print()
+
+    polls = 0
     try:
         while True:
             start = time.time()
-            results = api.get_draft_results() or []
-            new_rows = collect_new(results)
-            if new_rows:
-                exporter.append_draft_results(new_rows)
-                exporter.add_timestamp()
-                for r in new_rows:
-                    LOG.info("Pick %s: %s", r[1], r[2])
+            try:
+                results = api.get_draft_results() or []
+                new_rows = collect_new(results)
+                polls += 1
+
+                if new_rows:
+                    exporter.append_draft_results(new_rows)
+                    exporter.add_timestamp()
+                    for r in new_rows:
+                        print(f"✅ Pick {r[1]}: {r[2]} (Team: {r[3]})")
+                else:
+                    # Show periodic status so user knows it's working
+                    if polls % 6 == 1:  # Every ~60 seconds (6 polls × 10s)
+                        print(f"⏳ Still monitoring... ({polls} checks completed)")
+
+            except Exception as e:
+                print(f"⚠️  Error during check #{polls}: {e}")
+                # Continue monitoring even if one check fails
+
             remaining = INTERVAL - (time.time() - start)
             if remaining > 0:
                 time.sleep(remaining)
     except KeyboardInterrupt:
-        LOG.info("Stopped by user.")
+        print(f"\n🛑 Stopped by user after {polls} checks.")
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,7 @@
 @echo off
 cd /d %~dp0\..
 if not exist .env (
-  echo No .env file found. Copy windows\.env.windows.example to .env first.
+  echo No .env file found. Copy .env.example to .env first.
   pause
   exit /b 1
 )

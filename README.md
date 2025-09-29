@@ -81,7 +81,6 @@ The Excel file contains these sheets:
 Optional settings in `.env`:
 
 - `EXCEL_FILENAME=my_draft.xlsx` - Change the spreadsheet filename
-- `DRAFT_MONITOR_INTERVAL=5` - Check for picks every 5 seconds instead of 10
 
 ## Troubleshooting
 
