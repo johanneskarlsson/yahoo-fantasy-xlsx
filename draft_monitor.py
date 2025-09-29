@@ -35,13 +35,9 @@ def _scalar(v):
         return v.get('#text') or v.get('full') or v.get('name') or ''
     return v
 
-def _player_name(dr):
-    p = dr.get('player') if isinstance(dr, dict) else None
-    if isinstance(p, dict):
-        nm = p.get('name')
-        if isinstance(nm, dict):
-            return nm.get('full') or ''
-    return dr.get('player_name') or ''
+def _player_key(dr):
+    # Get player_key directly from draft result
+    return dr.get('player_key', '')
 
 def collect_new(draft_results):
     rows = []
@@ -55,7 +51,8 @@ def collect_new(draft_results):
                 continue
             rnd = _scalar(dr.get('round')) or ''
             team_key = _scalar(dr.get('team_key')) or ''
-            rows.append([rnd, pick_num, _player_name(dr) or '', team_key, ""])
+            player_key = _player_key(dr) or ''
+            rows.append([rnd, pick_num, player_key, team_key, ""])
             seen_picks.add(pick_num)
         except Exception:
             continue
@@ -86,14 +83,25 @@ def main():
             start = time.time()
             try:
                 results = api.get_draft_results() or []
-                new_rows = collect_new(results)
                 polls += 1
 
+                # Log draft status on first poll
+                if polls == 1:
+                    if results:
+                        print(f"📋 Found {len(results)} total draft picks so far")
+                    else:
+                        print("📋 No draft picks found yet")
+
+                new_rows = collect_new(results)
+
                 if new_rows:
-                    exporter.append_draft_results(new_rows)
-                    exporter.add_timestamp()
-                    for r in new_rows:
-                        print(f"✅ Pick {r[1]}: {r[2]} (Team: {r[3]})")
+                    try:
+                        exporter.append_draft_results(new_rows)
+                        exporter.add_timestamp()
+                        for r in new_rows:
+                            print(f"✅ Pick {r[1]}: {r[2]} (Team: {r[3]})")
+                    except Exception as e:
+                        print(f"⚠️  Error saving draft picks: {e}")
                 else:
                     # Show periodic status so user knows it's working
                     if polls % 6 == 1:  # Every ~60 seconds (6 polls × 10s)

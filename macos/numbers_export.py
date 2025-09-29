@@ -57,7 +57,7 @@ return "OK"'''
 		try:
 			self._sync_numbers(rows, start_row)
 		except Exception as e:
-			self.logger.debug(f"Live sync failed: {e}")
+			print(f"⚠️  Numbers live sync failed: {e}")
 
 
 	def _sync_numbers(self, rows: List[List[str]], start_row: int):
@@ -65,7 +65,7 @@ return "OK"'''
 		if not os.path.exists(numbers_path):
 			return
 		base = os.path.splitext(os.path.basename(self.filename))[0]
-		doc_hint = os.getenv("NUMBERS_DOC_HINT", base)
+		doc_hint = base
 		cell_cmds = []
 		for offset, row in enumerate(rows):
 			rnum = start_row + offset
@@ -112,8 +112,8 @@ end tell
 return "OK"\nend run'''
 		res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
 		if res.returncode == 0 and res.stdout.strip().endswith("OK"):
-			self.logger.debug("Numbers live sync applied")
+			print("✅ Numbers live sync applied successfully!")
 		else:
-			self.logger.debug(f"Numbers sync status rc={res.returncode} out={res.stdout.strip()} err={res.stderr.strip()}")
+			print(f"❌ Numbers sync failed - {res.stderr.strip() or 'Unknown error'}")
 
 __all__ = ["MacOSDraftExporter"]

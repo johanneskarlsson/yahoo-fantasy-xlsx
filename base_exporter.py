@@ -282,14 +282,14 @@ class BaseDraftExporter(ABC):
             for r in range(2, max_row + 1):
                 if not analysis[f"A{r}"].value:
                     continue
-                # draftedBy via Draft Results lookup
-                db[f"A{r}"] = f"=IFERROR(VLOOKUP('Pre-Draft Analysis'!B{r},'Draft Results'!C:E,3,FALSE),\"\")"
+                # draftedBy via Draft Results lookup (using player_key from Pre-Draft Analysis column A)
+                db[f"A{r}"] = f"=IFERROR(VLOOKUP('Pre-Draft Analysis'!A{r},'Draft Results'!C:D,2,FALSE),\"\")"
                 # Direct references for playerName, team, position, averagePick
                 db[f"B{r}"] = f"='Pre-Draft Analysis'!B{r}"
                 db[f"C{r}"] = f"='Pre-Draft Analysis'!C{r}"
                 db[f"D{r}"] = f"='Pre-Draft Analysis'!D{r}"
                 db[f"E{r}"] = f"='Pre-Draft Analysis'!E{r}"
-                # projectedPoints: choose goalie vs skater projection VLOOKUP
+                # projectedPoints: choose goalie vs skater projection VLOOKUP (using playerName)
                 db[f"F{r}"] = (
                     f"=IF('Pre-Draft Analysis'!D{r}=\"G\"," \
                     f"IFERROR(VLOOKUP('Pre-Draft Analysis'!B{r},'Goalie Projections'!A:F,6,FALSE),\"\")," \
