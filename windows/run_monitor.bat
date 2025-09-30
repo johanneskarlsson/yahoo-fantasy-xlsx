@@ -5,5 +5,5 @@ if not exist .env (
   pause
   exit /b 1
 )
-python draft_monitor.py
+python windows\draft_monitor.py
 pause

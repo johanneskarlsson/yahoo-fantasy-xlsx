@@ -17,11 +17,11 @@ LOG = logging.getLogger("draft_monitor")
 
 INTERVAL = 10  # Check for new picks every 10 seconds
 
-filename = os.getenv('EXCEL_FILENAME', 'fantasy_draft_data.xlsx')
+filename = os.getenv('FILENAME', 'fantasy_draft_data.xlsx')
 if filename.lower().endswith('.numbers'):
     base = filename[:-8] or 'fantasy_draft_data'
     filename = base + '.xlsx'
-    LOG.warning("EXCEL_FILENAME was a .numbers package; using canonical '%s'", filename)
+    LOG.warning("FILENAME was a .numbers package; using canonical '%s'", filename)
 elif not filename.lower().endswith('.xlsx'):
     filename += '.xlsx'
 
