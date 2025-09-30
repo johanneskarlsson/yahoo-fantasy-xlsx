@@ -81,6 +81,15 @@ class XlsxDraftExporter:
         wb.save(self.filename)
         self.logger.debug(f"Added {len(rows)} picks (rows {start}-{start+len(rows)-1})")
 
+    # ---- Compatibility adapters (used by windows.draft_monitor) ----
+    def append_draft_results(self, rows: List[List[str]]):  # pragma: no cover - thin wrapper
+        """Alias for append_picks to match mac/windows monitor naming consistency."""
+        return self.append_picks(rows)
+
+    def add_timestamp(self):  # pragma: no cover - thin wrapper
+        """Alias for timestamp (naming parity with mac exporter)."""
+        return self.timestamp()
+
     def timestamp(self):
         """Add timestamp to Draft Results sheet."""
         wb = load_workbook(self.filename)

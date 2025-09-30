@@ -111,6 +111,70 @@ Optional settings in `.env`:
 
 **Yahoo authentication issues**
 
+## Testing
+
+An initial test suite is provided using `pytest` and `Faker` for synthetic data generation.
+
+Install dev dependencies:
+
+```
+pip install -r requirements-dev.txt
+```
+
+Run tests:
+
+```
+pytest -q
+```
+
+Key areas covered initially:
+
+- Helper extraction utilities (`_extract_dict_value`, `_ensure_list`)
+- Stat modifier resolution (`_get_stat_modifier_value`)
+- Player name caching (`get_player_name`) via monkeypatched network layer
+- Draft info extraction (`_extract_player_draft_info`) with synthetic nested Yahoo-style dicts
+
+Next test ideas:
+
+- Add tests for `get_league_settings` parsing with varied roster/stat structures
+- Add batch pagination tests for `get_player_draft_analysis` by faking `_make_api_request`
+- Introduce fixtures for common Yahoo API response shells
+- Use `requests-mock` to simulate HTTP layer instead of monkeypatching internal method
+
+To measure coverage (optional):
+
+```
+coverage run -m pytest && coverage report -m
+
+### macOS Integration Test (Numbers)
+
+There is an optional end-to-end integration test that opens Numbers via AppleScript and verifies sheets & formulas inside a real `.numbers` document.
+
+By default it is skipped. Enable it explicitly (macOS only):
+
+```
+
+export RUN_NUMBERS_IT=1 # fish: set -x RUN_NUMBERS_IT 1
+pytest -m integration -q
+
+```
+
+Skip conditions:
+
+- Not running on macOS (Darwin)
+- `osascript` missing
+- `RUN_NUMBERS_IT` env var not set to `1`
+
+What it checks:
+
+- Creates Pre-Draft Analysis sheet with one player
+- Builds projection sheets and inserts sample stat values
+- Builds Draft Board and verifies player linkage
+- Confirms TOTAL formula produces expected weighted score
+
+These integration tests will launch and control the Numbers application briefly; close any unsaved work beforehand.
+```
+
 - Double-check your Client ID and Client Secret in `.env`
 - Make sure there are no extra spaces
 - Try running `python setup.py` again

@@ -1,3 +1,53 @@
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.dylib
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment / secrets (keep example files tracked)
+.env
+token.json
+
+# Test / coverage artifacts
+.pytest_cache/
+.coverage*
+htmlcov/
+.cache/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# OS / misc
+.DS_Store
+Thumbs.db
+
+# Generated fantasy draft spreadsheets (avoid committing large/ephemeral data)
+fantasy_draft_data.xlsx
+fantasy_draft_data.numbers
+fantasy_draft_data*.xlsx
+*.numbers
+
+# Temporary CSV or import artifacts
+yf_tmp_*.csv
+
+# Logs
+*.log
+
+# Coverage XML / reports
+coverage.xml
 # Environment variables
 .env
 

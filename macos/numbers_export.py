@@ -895,6 +895,49 @@ end tell
                 res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=60)
                 if res.returncode != 0:
                     self.logger.error(f"Failed to set Draft Board formulas (batch {batch_num + 1}/{total_batches}): {res.stderr}")
+                    # Fallback: if first batch fails, attempt lightweight player name + basic refs copy
+                    if batch_num == 0:
+                        fallback_script = f'''
+tell application "Numbers"
+    try
+        set doc to open (POSIX file "{numbers_abs}")
+        tell doc
+            tell sheet "Draft Board"
+                tell table 1
+                    set neededRows to {max_row}
+                    if (row count) < neededRows then
+                        repeat (neededRows - (row count)) times
+                            add row below last row
+                        end repeat
+                    end if
+                end tell
+            end tell
+            -- Simple direct copy of player names & attributes without formulas (integration fallback)
+            repeat with r from 2 to {max_row}
+                try
+                    tell sheet "Pre-Draft Analysis" to set pName to value of cell 2 of row r of table 1
+                    tell sheet "Pre-Draft Analysis" to set pTeam to value of cell 3 of row r of table 1
+                    tell sheet "Pre-Draft Analysis" to set pPos to value of cell 4 of row r of table 1
+                    tell sheet "Pre-Draft Analysis" to set pAvg to value of cell 5 of row r of table 1
+                    tell sheet "Draft Board" to tell table 1
+                        set value of cell 2 of row r to pName
+                        set value of cell 3 of row r to pTeam
+                        set value of cell 4 of row r to pPos
+                        set value of cell 5 of row r to pAvg
+                    end tell
+                end try
+            end repeat
+        end tell
+        save doc
+        close doc
+    on error errMsg
+        return "ERROR: " & errMsg
+    end try
+end tell
+'''
+                        fb_res = subprocess.run(["osascript", "-e", fallback_script], capture_output=True, text=True, timeout=30)
+                        if fb_res.returncode != 0:
+                            self.logger.error(f"Fallback Draft Board population failed: {fb_res.stderr}")
                 else:
                     self.logger.debug(f"Set Draft Board formulas batch {batch_num + 1}/{total_batches} (rows {start_row}-{end_row - 1})")
 
