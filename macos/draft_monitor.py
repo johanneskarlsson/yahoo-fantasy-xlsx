@@ -80,15 +80,11 @@ def _rows_to_applescript(rows):
     return '{' + ', '.join(applescript_rows) + '}'
 
 
+# ...existing code...
 def append_picks_silently(rows):
     """
-    Append draft picks to Draft Results WITHOUT changing active sheet or closing document.
-
-    Key differences from standard append:
-    - Uses document 1 (assumes already open)
-    - No open/close commands
-    - No save command (user can save manually or auto-save will handle it)
-    - Works on background sheet while user views Draft Board
+    Append draft picks to Draft Results WITHOUT leaving user on that sheet.
+    Restores previously active sheet after insertion.
     """
     if not rows:
         return True
@@ -100,13 +96,14 @@ on run
     set newRows to {rows_script}
 
     tell application "Numbers"
-        -- Work with the first open document (assumes user has Numbers open)
         if (count of documents) is 0 then
             return "ERROR: No Numbers document is open"
         end if
 
         tell document 1
-            -- Check if Draft Results sheet exists
+            -- Remember which sheet the user had active
+            set priorSheetName to name of active sheet
+
             set sheetExists to false
             repeat with s in sheets
                 if name of s is "Draft Results" then
@@ -114,14 +111,13 @@ on run
                     exit repeat
                 end if
             end repeat
-
             if not sheetExists then
                 return "ERROR: Draft Results sheet not found"
             end if
 
+            -- Write into Draft Results
             tell sheet "Draft Results"
                 tell table 1
-                    -- Find first empty row (skip header row 1)
                     set startRow to 2
                     set currentRows to row count
                     repeat with i from 2 to currentRows
@@ -131,13 +127,10 @@ on run
                             exit repeat
                         end if
                     end repeat
-
-                    -- If all rows are full, we need to add new rows
                     if startRow > currentRows then
                         set startRow to currentRows + 1
                     end if
 
-                    -- Calculate how many rows we need total
                     set neededRows to startRow + (count of newRows) - 1
                     if neededRows > currentRows then
                         repeat (neededRows - currentRows) times
@@ -145,24 +138,34 @@ on run
                         end repeat
                     end if
 
-                    -- Fill in the data
                     set rowIndex to startRow
                     repeat with rowData in newRows
                         set colIndex to 1
                         repeat with cellValue in rowData
-                            set value of cell colIndex of row rowIndex to cellValue
+                            if colIndex ≤ 4 then
+                                set value of cell colIndex of row rowIndex to cellValue
+                            end if
                             set colIndex to colIndex + 1
                         end repeat
+
+                        -- Column 5: manager lookup formula
+                        set formulaStr to "=IF(ISERROR(INDEX('Teams'::D;MATCH(D" & rowIndex & ";'Teams'::A;0)));\\"\\";INDEX('Teams'::D;MATCH(D" & rowIndex & ";'Teams'::A;0)))"
+                        set value of cell 5 of row rowIndex to formulaStr
+
                         set rowIndex to rowIndex + 1
                     end repeat
                 end tell
             end tell
+
+            -- Restore previously active sheet (only if different)
+            if priorSheetName is not "Draft Results" then
+                set active sheet to sheet priorSheetName
+            end if
         end tell
     end tell
     return "OK"
 end run
 '''
-
     try:
         res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=10)
         if res.returncode == 0:
@@ -170,11 +173,7 @@ end run
             if output.startswith("ERROR"):
                 LOG.error(f"AppleScript error: {output}")
                 return False
-            LOG.debug(f"Added {len(rows)} picks to Draft Results")
-
-            # Now set formulas for manager column in a separate script
-            _set_manager_formulas()
-
+            LOG.debug(f"Added {len(rows)} picks (with manager formulas) to Draft Results (sheet restored)")
             return True
         else:
             LOG.error(f"Failed to append picks: {res.stderr}")
@@ -185,6 +184,7 @@ end run
     except Exception as e:
         LOG.error(f"Error appending picks: {e}")
         return False
+# ...existing code...
 
 
 def _set_manager_formulas():
@@ -215,7 +215,10 @@ end tell
     formula_commands = []
     for r in range(2, row_count + 1):
         # Column E (manager): INDEX/MATCH lookup from Teams sheet
-        formula_e = f"IF(D{r}=\\\"\\\";\\\"\\\";INDEX('Teams'::'Teams Table'::D;MATCH(D{r};'Teams'::'Teams Table'::A;0)))"
+        formula_e = (
+            f"IF(ISERROR(INDEX('Teams'::D;MATCH(D{r};'Teams'::A;0)));\\\"\\\";"
+            f"INDEX('Teams'::D;MATCH(D{r};'Teams'::A;0)))"
+        )
         formula_commands.append(f'tell cell 5 of row {r}')
         formula_commands.append(f'    set formulaStr to "=" & "{formula_e}"')
         formula_commands.append(f'    set its value to formulaStr')
@@ -296,8 +299,11 @@ end tell
         while True:
             start = time.time()
             try:
+                # Log each polling cycle so user can see continuous activity in log output
+                LOG.info(f"Polling Yahoo API (check #{polls + 1})...")
                 results = api.get_draft_results() or []
                 polls += 1
+                LOG.info(f"Poll #{polls} complete: total picks returned={len(results)}")
 
                 # Log draft status on first poll
                 if polls == 1:
@@ -309,6 +315,7 @@ end tell
                 new_rows = collect_new(results)
 
                 if new_rows:
+                    LOG.info(f"Poll #{polls}: {len(new_rows)} new picks detected")
                     success = append_picks_silently(new_rows)
                     if success:
                         for r in new_rows:
@@ -316,6 +323,7 @@ end tell
                     else:
                         print(f"⚠️  Error saving {len(new_rows)} draft picks")
                 else:
+                    LOG.info(f"Poll #{polls}: no new picks")
                     # Show periodic status so user knows it's working
                     if polls % 6 == 1:  # Every ~60 seconds (6 polls × 10s)
                         print(f"⏳ Still monitoring... ({polls} checks completed)")
