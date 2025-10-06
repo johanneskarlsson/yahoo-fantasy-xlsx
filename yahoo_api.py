@@ -343,7 +343,7 @@ class YahooFantasyAPI:
                 all_draft_data = []
                 start = 0
                 batch_size = 25  # Yahoo API seems to limit to 25
-                max_iterations = 40  # 40 * 25 = 1000 players max
+                max_iterations = 15  # 40 * 25 = 1000 players max
 
                 for iteration in range(max_iterations):
                     # Insert the start and count parameters into the URL
@@ -371,7 +371,7 @@ class YahooFantasyAPI:
 
                                 batch_draft_data = []
                                 for player in players:
-                                    player_info = self._extract_player_draft_info(player)
+                                    player_info = self._extract_draft_analysis_data(player)
                                     if player_info:
                                         batch_draft_data.append(player_info)
 
@@ -436,42 +436,17 @@ class YahooFantasyAPI:
             self.logger.warning(f"Failed to fetch player name for {player_key}: {e}")
             return ""
 
-    def _extract_player_draft_info(self, player):
+    def _extract_draft_analysis_data(self, player):
         """Extract draft-related information from a player object"""
         try:
             player_key = self._extract_dict_value(player, 'player_key')
             full_name = self._extract_dict_value(player['name'], 'full')
 
-            # Extract draft analysis data
             draft_info = {}
             if 'draft_analysis' in player:
                 draft_analysis = player['draft_analysis']
                 draft_info['average_pick'] = self._extract_dict_value(draft_analysis, 'average_pick')
                 draft_info['average_round'] = self._extract_dict_value(draft_analysis, 'average_round')
-                draft_info['percent_drafted'] = self._extract_dict_value(draft_analysis, 'percent_drafted')
-                draft_info['preseason_average_pick'] = self._extract_dict_value(draft_analysis, 'preseason_average_pick')
-                draft_info['preseason_percent_drafted'] = self._extract_dict_value(draft_analysis, 'preseason_percent_drafted')
-
-            # Extract auction values
-            draft_info['projected_auction_value'] = self._extract_dict_value(player, 'projected_auction_value')
-            draft_info['average_auction_cost'] = self._extract_dict_value(player, 'average_auction_cost')
-
-            # Extract rankings
-            season_rank = ''
-            position_rank = ''
-            if 'player_ranks' in player and 'player_rank' in player['player_ranks']:
-                ranks = self._ensure_list(player['player_ranks']['player_rank'])
-                for rank in ranks:
-                    rank_type = rank.get('rank_type', '')
-                    rank_season = rank.get('rank_season', '')
-                    rank_position = rank.get('rank_position', '')
-
-                    # Get current season overall rank
-                    if rank_type == 'S' and rank_season == '2025' and not rank_position:
-                        season_rank = self._extract_dict_value(rank, 'rank_value')
-                    # Get current season position rank
-                    elif rank_type == 'S' and rank_season == '2025' and rank_position:
-                        position_rank = self._extract_dict_value(rank, 'rank_value')
 
             return [
                 player_key,
@@ -479,14 +454,6 @@ class YahooFantasyAPI:
                 self._extract_dict_value(player, 'editorial_team_abbr'),
                 self._extract_dict_value(player, 'display_position'),
                 draft_info.get('average_pick', ''),
-                draft_info.get('average_round', ''),
-                draft_info.get('percent_drafted', ''),
-                draft_info.get('projected_auction_value', ''),
-                draft_info.get('average_auction_cost', ''),
-                season_rank,
-                position_rank,
-                draft_info.get('preseason_average_pick', ''),
-                draft_info.get('preseason_percent_drafted', '')
             ]
 
         except Exception as e:
